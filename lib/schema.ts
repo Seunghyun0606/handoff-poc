@@ -26,6 +26,16 @@ const categoryItem = {
   required: ["id", "status", "reason"],
 };
 
+const questionItem = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    category_id: { type: "string", enum: [...CATEGORY_IDS] },
+    question: { type: "string" },
+  },
+  required: ["category_id", "question"],
+};
+
 export const ANALYSIS_JSON_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -36,7 +46,7 @@ export const ANALYSIS_JSON_SCHEMA = {
       maxItems: 12,
       items: categoryItem,
     },
-    questions: { type: "array", items: { type: "string" }, maxItems: 8 },
+    questions: { type: "array", items: questionItem, maxItems: 8 },
   },
   required: ["categories", "questions"],
 } as const;
