@@ -1,13 +1,6 @@
 name: Synthetic Validation
 
 on:
-  push:
-    branches:
-      - validation/synthetic-contest
-    paths:
-      - 'validation/synthetic-corpus.json'
-      - 'scripts/synthetic-validation.mjs'
-      - '.github/workflows/synthetic-validation.yml'
   workflow_dispatch:
 
 jobs:
