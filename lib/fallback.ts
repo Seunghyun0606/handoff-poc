@@ -73,7 +73,7 @@ export function analyzeFallback(text: string): AnalysisResult {
     questions,
     improved_document: improved(text, categories),
     source: "fallback",
-    notice: "OPENAI_API_KEY가 없어 데모용 규칙 기반 분석기를 사용했습니다.",
+    notice: "LLM API 키가 없어 데모용 규칙 기반 분석기를 사용했습니다.",
   });
 
   return {

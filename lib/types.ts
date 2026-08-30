@@ -16,6 +16,7 @@ export const CATEGORY_IDS = [
 export type CategoryId = (typeof CATEGORY_IDS)[number];
 export type CategoryStatus = "CLEAR" | "PARTIAL" | "MISSING";
 export type GapSeverity = "CRITICAL" | "WARNING";
+export type AnalysisSource = "azure-openai" | "openai" | "fallback";
 
 export interface CategoryResult {
   id: CategoryId;
@@ -40,6 +41,6 @@ export interface AnalysisResult {
   gaps: Gap[];
   questions: string[];
   improved_document: string;
-  source?: "openai" | "fallback";
+  source?: AnalysisSource;
   notice?: string;
 }
