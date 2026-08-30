@@ -90,6 +90,7 @@ async function analyzeWithAzureOpenAI(text: string): Promise<AnalysisResult> {
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: buildDocumentPrompt(text) },
       ],
+      temperature: 0,
       response_format: {
         type: "json_schema",
         json_schema: {
