@@ -12,7 +12,7 @@ type LlmSource = Exclude<AnalysisSource, "fallback">;
 type ImprovementContext = Pick<AnalysisResult, "categories" | "gaps" | "questions">;
 type CompactAnalysis = {
   categories: Array<{ id: CategoryId; status: CategoryStatus; reason: string }>;
-  questions: string[];
+  questions: Array<{ category_id: CategoryId; question: string }>;
 };
 
 function getApiKey(): string {
@@ -93,10 +93,25 @@ function parseAnalysis(outputText: string, source: LlmSource): AnalysisResult {
       score: 0,
     })),
     gaps: [],
-    questions: parsed.questions,
+    questions: [],
     improved_document: "",
   });
-  return { ...normalized, source };
+
+  const unresolvedIds = new Set(
+    normalized.categories.filter((item) => item.status !== "CLEAR").map((item) => item.id),
+  );
+  const seen = new Set<CategoryId>();
+  const questions = parsed.questions
+    .filter((item) => unresolvedIds.has(item.category_id))
+    .filter((item) => {
+      if (seen.has(item.category_id)) return false;
+      seen.add(item.category_id);
+      return true;
+    })
+    .map((item) => item.question.trim())
+    .filter(Boolean);
+
+  return { ...normalized, questions, source };
 }
 
 function parseImprovement(outputText: string, source: LlmSource) {
