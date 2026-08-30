@@ -82,6 +82,16 @@ const STATUS_SCORES: Record<CategoryStatus, number> = {
   MISSING: 0,
 };
 
+const CRITICAL_CATEGORY_IDS = new Set([
+  "procedure",
+  "systems_tools",
+  "access_permissions",
+  "incident_response",
+]);
+const CRITICAL_MISSING_PENALTY = 5;
+const NO_MISSING_COMPLETENESS_BONUS = 10;
+const MAX_OVERALL_SCORE = 95;
+
 export function normalizeAnalysis(result: AnalysisResult): AnalysisResult {
   const byId = new Map(result.categories.map((item) => [item.id, item]));
   const categories = CATEGORY_DEFINITIONS.map((definition) => {
@@ -99,7 +109,15 @@ export function normalizeAnalysis(result: AnalysisResult): AnalysisResult {
   const statusById = new Map(categories.map((item) => [item.id, item.status]));
   const gaps = result.gaps.filter((gap) => statusById.get(gap.category_id) !== "CLEAR");
   const weightedScore = Math.round(categories.reduce((sum, item) => sum + item.score * (WEIGHTS[item.id] ?? 0), 0));
-  const overall = Math.min(95, weightedScore);
+
+  const criticalMissingCount = categories.filter(
+    (item) => item.status === "MISSING" && CRITICAL_CATEGORY_IDS.has(item.id),
+  ).length;
+  const missingCount = categories.filter((item) => item.status === "MISSING").length;
+  const readinessAdjustment = missingCount === 0
+    ? NO_MISSING_COMPLETENESS_BONUS
+    : -(criticalMissingCount * CRITICAL_MISSING_PENALTY);
+  const overall = Math.max(0, Math.min(MAX_OVERALL_SCORE, weightedScore + readinessAdjustment));
 
   return { ...result, overall_score: overall, categories, gaps };
 }
