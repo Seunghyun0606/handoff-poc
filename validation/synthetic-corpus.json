@@ -1,0 +1,66 @@
+[
+  {
+    "id": "D1",
+    "title": "일일 매출자료 공유 - 정보 부족",
+    "human_grade": "POOR",
+    "ground_truth_gaps": ["purpose","procedure","systems_tools","access_permissions","contacts","schedule_deadline","input_data","output_results","exception_handling","incident_response","validation","follow_up"],
+    "critical_ground_truth_gaps": ["procedure","systems_tools","access_permissions","incident_response"],
+    "text": "매일 오전 매출 자료를 다운받아서 팀에 공유한다. 월말에는 정산 자료도 추가로 만든다. 파일에 문제가 있거나 화면 오류가 나면 담당자에게 문의한다."
+  },
+  {
+    "id": "D2",
+    "title": "급여 인터페이스 전송 - 기본 절차 존재",
+    "human_grade": "FAIR",
+    "ground_truth_gaps": ["access_permissions","exception_handling","incident_response"],
+    "critical_ground_truth_gaps": ["access_permissions","incident_response"],
+    "text": "업무 목적: 확정된 월 급여 데이터를 회계시스템으로 전달한다. 수행 시점은 매월 급여 확정일 오후 4시 이전이다. HRIS > 급여 > 인터페이스 화면에서 대상 월을 선택하고 '회계전송'을 실행한다. 전송 대상은 급여 확정 상태인 임직원 데이터이며, 전송 완료 후 인터페이스 건수와 HRIS 확정 인원수를 비교한다. 성공하면 생성된 전송번호를 급여운영 Teams 채널에 남긴다. HRIS 급여 담당 권한이 필요하다. 오류가 발생하면 재처리 버튼을 사용하거나 HRIS 운영팀에 문의한다. 담당 채널은 Teams #hris-ops이다."
+  },
+  {
+    "id": "D3",
+    "title": "신규 계정 발급 - 완성도 높음",
+    "human_grade": "GOOD",
+    "ground_truth_gaps": [],
+    "critical_ground_truth_gaps": [],
+    "text": "업무 목적: 입사자가 첫 출근일 오전부터 사내 포털과 메일을 사용할 수 있도록 계정을 발급한다. 수행 주기: 입사 예정일 전 영업일 오후 3시까지 처리한다. 입력: HR Portal의 입사확정자 목록에서 사번, 이름, 소속, 입사일을 확인한다. 시스템: IT Service Portal > Identity > New Account 메뉴를 사용한다. 권한: Identity-Provisioner 권한이 필요하며 신규 담당자는 IT Service Portal의 권한신청 메뉴에서 신청하고 IAM 팀장의 승인을 받는다. 절차: 1) 입사확정자 목록 확인 2) New Account 메뉴 진입 3) 사번/이름/소속 입력 4) 메일 및 포털 사용 체크 5) 신청 제출 6) 발급 완료 메일 확인 7) HR Portal 계정발급 상태를 완료로 변경한다. 검증: 발급 결과의 사번과 HR Portal 사번이 같고 상태가 Active인지 확인한다. 예외: 입사일 변경 시 기존 신청을 취소하고 변경된 입사일 기준으로 다시 신청한다. 장애 대응: 10분 이상 Processing이면 IAM Service Desk에 티켓을 등록하고 긴급 입사자는 #iam-urgent 채널에 티켓번호를 남긴다. 담당: IAM Service Desk, Teams #iam-support. 출력: Active 상태의 포털/메일 계정과 HR Portal 완료 기록. 후속: 완료 메일은 팀 공유메일함에 3개월 보관한다."
+  },
+  {
+    "id": "D4",
+    "title": "SSL 인증서 갱신 - 실행 정보 부족",
+    "human_grade": "POOR",
+    "ground_truth_gaps": ["purpose","procedure","access_permissions","contacts","schedule_deadline","input_data","output_results","exception_handling","incident_response","validation","follow_up"],
+    "critical_ground_truth_gaps": ["procedure","access_permissions","incident_response"],
+    "text": "서비스 인증서는 CertCenter에서 갱신한다. 만료되기 전에 새 인증서를 발급해서 서버에 적용해야 한다. 적용하다 문제가 생기면 기존 인증서로 돌린다. 보통 분기마다 확인한다."
+  },
+  {
+    "id": "D5",
+    "title": "신규 입사자 온보딩 - 보통 수준",
+    "human_grade": "FAIR",
+    "ground_truth_gaps": ["access_permissions","contacts","incident_response","validation"],
+    "critical_ground_truth_gaps": ["access_permissions","incident_response"],
+    "text": "목적: 신규 입사자가 첫날 필요한 기본 업무환경을 갖추게 한다. 매주 목요일 오후에 다음 주 입사자 명단을 HR Portal에서 확인한다. 입사자 이름, 사번, 조직, 입사일을 기준으로 Onboarding Board에 카드를 만들고 노트북 신청, 사원증 신청, 필수교육 등록 여부를 체크한다. 입사 전 영업일까지 노트북과 사원증 신청을 완료하고, 입사 당일 오전 10시까지 필수교육 링크를 메일로 보낸다. 노트북은 IT Service Portal > Device Request, 사원증은 Facility Portal > Badge 메뉴에서 신청한다. 신청이 반려되면 사유를 확인해서 정보를 수정한 뒤 다시 신청한다. 완료 후 Onboarding Board 카드 상태를 Done으로 변경한다."
+  },
+  {
+    "id": "D6",
+    "title": "야간 배치 모니터링 - 완성도 높음",
+    "human_grade": "GOOD",
+    "ground_truth_gaps": ["follow_up"],
+    "critical_ground_truth_gaps": [],
+    "text": "목적: 매일 야간 인사 마스터 동기화 배치가 정상 완료됐는지 확인하고 실패 시 오전 업무 전에 복구한다. 수행시간: 평일 오전 07:30, 배치는 02:00에 실행된다. 시스템: OpsConsole > Batch Monitor > HR_MASTER_SYNC. 권한: OpsConsole-Operator 권한이 필요하며 Access Portal에서 신청 후 운영리더 승인을 받는다. 절차: 1) HR_MASTER_SYNC 실행상태 확인 2) SUCCESS이면 처리건수 확인 3) 전일 HR 확정 변경건수와 처리건수 비교 4) 일치하면 점검 완료 5) FAILED이면 로그의 error_code 확인 6) DB_CONN 오류는 5분 후 1회 재실행 7) DATA_VALIDATION 오류는 재실행하지 않고 HR Data팀에 전달한다. 입력: 전일 HR 확정 변경건수와 배치 실행로그. 출력: 성공 상태 및 처리건수 확인 결과. 예외: 휴일 다음 영업일에는 휴일 기간 누적 변경건수를 기준으로 비교한다. 장애 대응: 재실행 후에도 실패하면 Service Desk P1 티켓을 생성하고 Teams #hr-ops-alert에 티켓번호와 error_code를 공유한다. 담당: HR Platform 운영팀, #hr-ops-alert. 검증: OpsConsole 처리건수와 HR 확정 변경건수가 일치해야 한다."
+  },
+  {
+    "id": "D7",
+    "title": "협력사 세금계산서 처리 - 일부 핵심 누락",
+    "human_grade": "FAIR",
+    "ground_truth_gaps": ["access_permissions","contacts","exception_handling","incident_response","follow_up"],
+    "critical_ground_truth_gaps": ["access_permissions","incident_response"],
+    "text": "목적: 협력사 세금계산서를 확인해 월 비용 마감에 반영한다. 매월 1~5영업일 오전에 Finance Portal > AP > Tax Invoice에서 전월 계산서를 조회한다. 조회 조건은 공급일자 전월 1일~말일, 상태 Received이다. 각 계산서의 사업자번호와 공급가액을 계약관리 시스템의 계약정보와 비교하고 일치하면 승인한다. 불일치 건은 승인하지 않고 메모에 불일치 항목을 기록한다. 승인 완료 후 Finance Portal의 승인건수와 다운로드한 월 마감 목록의 건수를 비교한다. 출력은 Approved 상태의 전월 세금계산서 목록이다."
+  },
+  {
+    "id": "D8",
+    "title": "월간 DB 백업 복구 점검 - 완성도 높음",
+    "human_grade": "GOOD",
+    "ground_truth_gaps": [],
+    "critical_ground_truth_gaps": [],
+    "text": "목적: 운영 DB 백업이 실제 복구 가능한지 매월 검증한다. 수행 주기: 매월 첫째 화요일 14:00~16:00. 입력: 전일 23:00 생성된 PROD-HRDB 전체 백업. 시스템: Backup Console > Restore Test와 TestDB Admin Console을 사용한다. 권한: Backup-Restore-Operator와 TestDB-Admin 권한이 필요하며 Access Portal에서 DBA 매니저 승인으로 신청한다. 절차: 1) 전일 PROD-HRDB 백업 상태 SUCCESS 확인 2) Restore Test에서 최신 백업 선택 3) 대상 TestDB-HR-RESTORE 선택 4) Restore 실행 5) 완료 후 TestDB 접속 6) EMPLOYEE 테이블 row count와 백업 리포트 row count 비교 7) 샘플 사번 3건 조회 8) 테스트 DB 삭제 요청 등록. 검증: restore 상태 SUCCESS, row count 일치, 샘플 3건 조회 성공이어야 한다. 예외: 최신 백업이 FAILED면 그 이전 성공 백업으로 테스트하고 최신 백업 실패 건은 별도 장애로 등록한다. 장애 대응: Restore가 30분 이상 멈추거나 실패하면 재시도하지 않고 DBA On-call에 P2 호출한다. 담당: DBA 운영팀, Teams #dba-oncall, 내선 7001. 출력: Restore Test 결과 캡처와 월간 점검 체크리스트. 후속: 결과를 Ops Wiki의 DB Restore Validation 페이지에 첨부하고 체크리스트를 1년 보관한다."
+  }
+]
