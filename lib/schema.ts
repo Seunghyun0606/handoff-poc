@@ -1,4 +1,4 @@
-import { CATEGORY_IDS, type AnalysisResult, type CategoryStatus } from "./types";
+import { CATEGORY_IDS, type AnalysisResult, type CategoryId, type CategoryResult, type CategoryStatus, type Gap } from "./types";
 
 export const CATEGORY_DEFINITIONS = [
   { id: "purpose", name: "업무 목적" },
@@ -20,44 +20,25 @@ const categoryItem = {
   additionalProperties: false,
   properties: {
     id: { type: "string", enum: [...CATEGORY_IDS] },
-    name: { type: "string" },
     status: { type: "string", enum: ["CLEAR", "PARTIAL", "MISSING"] },
-    score: { type: "integer", minimum: 0, maximum: 100 },
     reason: { type: "string" },
   },
-  required: ["id", "name", "status", "score", "reason"],
+  required: ["id", "status", "reason"],
 };
 
 export const ANALYSIS_JSON_SCHEMA = {
   type: "object",
   additionalProperties: false,
   properties: {
-    overall_score: { type: "integer", minimum: 0, maximum: 100 },
-    summary: { type: "string" },
     categories: {
       type: "array",
       minItems: 12,
       maxItems: 12,
       items: categoryItem,
     },
-    gaps: {
-      type: "array",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        properties: {
-          severity: { type: "string", enum: ["CRITICAL", "WARNING"] },
-          category_id: { type: "string", enum: [...CATEGORY_IDS] },
-          title: { type: "string" },
-          reason: { type: "string" },
-          suggestion: { type: "string" },
-        },
-        required: ["severity", "category_id", "title", "reason", "suggestion"],
-      },
-    },
-    questions: { type: "array", items: { type: "string" }, maxItems: 12 },
+    questions: { type: "array", items: { type: "string" }, maxItems: 8 },
   },
-  required: ["overall_score", "summary", "categories", "gaps", "questions"],
+  required: ["categories", "questions"],
 } as const;
 
 export const IMPROVEMENT_JSON_SCHEMA = {
@@ -90,7 +71,7 @@ const STATUS_SCORES: Record<CategoryStatus, number> = {
   MISSING: 0,
 };
 
-const CRITICAL_CATEGORY_IDS = new Set([
+const CRITICAL_CATEGORY_IDS = new Set<CategoryId>([
   "procedure",
   "systems_tools",
   "access_permissions",
@@ -99,6 +80,50 @@ const CRITICAL_CATEGORY_IDS = new Set([
 const CRITICAL_MISSING_PENALTY = 5;
 const NO_MISSING_COMPLETENESS_BONUS = 10;
 const MAX_OVERALL_SCORE = 95;
+
+const GAP_SUGGESTIONS: Record<CategoryId, string> = {
+  purpose: "이 업무의 목적과 결과를 사용하는 대상은 누구인가요?",
+  procedure: "업무를 처음부터 끝까지 어떤 순서로 수행하나요?",
+  systems_tools: "어떤 시스템/도구의 어느 메뉴에서 작업하나요?",
+  access_permissions: "필요한 계정과 권한은 무엇이며 어떻게 확보하나요?",
+  contacts: "업무·장애별 문의 담당자와 연락 채널은 무엇인가요?",
+  schedule_deadline: "정확한 수행 주기와 완료 마감은 언제인가요?",
+  input_data: "입력 데이터의 기준일·출처·선택 조건은 무엇인가요?",
+  output_results: "최종 산출물의 형식과 전달·저장 위치는 어디인가요?",
+  exception_handling: "예외 상황은 무엇이며 각 상황을 어떻게 처리하나요?",
+  incident_response: "장애나 작업 실패 시 재시도·우회·에스컬레이션 절차는 무엇인가요?",
+  validation: "결과가 정상인지 무엇과 어떤 기준으로 검증하나요?",
+  follow_up: "완료 후 공유·보관·후속 조치는 무엇인가요?",
+};
+
+function deriveSummary(categories: CategoryResult[]): string {
+  const clear = categories.filter((item) => item.status === "CLEAR").length;
+  const partial = categories.filter((item) => item.status === "PARTIAL").length;
+  const missing = categories.filter((item) => item.status === "MISSING").length;
+
+  if (missing >= 5) {
+    return `12개 영역 중 ${missing}개가 누락되어, 현재 문서만으로는 독립적인 업무 수행이 어렵습니다.`;
+  }
+  if (missing > 0 || partial >= 4) {
+    return `12개 영역 중 ${clear}개는 충분하지만, 누락 ${missing}개와 확인 필요 ${partial}개를 보완해야 안정적인 인수가 가능합니다.`;
+  }
+  if (partial > 0) {
+    return `핵심 정보는 대부분 갖춰져 있으며, 확인 필요 ${partial}개 영역을 보완하면 독립 수행 가능성이 높습니다.`;
+  }
+  return "12개 핵심 영역이 모두 구체적으로 작성되어 독립 수행 가능성이 높습니다.";
+}
+
+function deriveGaps(categories: CategoryResult[]): Gap[] {
+  return categories
+    .filter((item) => item.status !== "CLEAR")
+    .map((item) => ({
+      severity: item.status === "MISSING" && CRITICAL_CATEGORY_IDS.has(item.id) ? "CRITICAL" : "WARNING",
+      category_id: item.id,
+      title: item.status === "MISSING" ? `${item.name} 정보 누락` : `${item.name} 구체화 필요`,
+      reason: item.reason,
+      suggestion: GAP_SUGGESTIONS[item.id],
+    }));
+}
 
 export function normalizeAnalysis(result: AnalysisResult): AnalysisResult {
   const byId = new Map(result.categories.map((item) => [item.id, item]));
@@ -114,10 +139,7 @@ export function normalizeAnalysis(result: AnalysisResult): AnalysisResult {
     };
   });
 
-  const statusById = new Map(categories.map((item) => [item.id, item.status]));
-  const gaps = result.gaps.filter((gap) => statusById.get(gap.category_id) !== "CLEAR");
   const weightedScore = Math.round(categories.reduce((sum, item) => sum + item.score * (WEIGHTS[item.id] ?? 0), 0));
-
   const criticalMissingCount = categories.filter(
     (item) => item.status === "MISSING" && CRITICAL_CATEGORY_IDS.has(item.id),
   ).length;
@@ -127,5 +149,11 @@ export function normalizeAnalysis(result: AnalysisResult): AnalysisResult {
     : -(criticalMissingCount * CRITICAL_MISSING_PENALTY);
   const overall = Math.max(0, Math.min(MAX_OVERALL_SCORE, weightedScore + readinessAdjustment));
 
-  return { ...result, overall_score: overall, categories, gaps };
+  return {
+    ...result,
+    overall_score: overall,
+    summary: result.summary?.trim() || deriveSummary(categories),
+    categories,
+    gaps: result.gaps.length ? result.gaps.filter((gap) => categories.find((item) => item.id === gap.category_id)?.status !== "CLEAR") : deriveGaps(categories),
+  };
 }
