@@ -15,17 +15,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "PoC에서는 문서 길이를 20,000자로 제한합니다." }, { status: 400 });
     }
 
-    if (!process.env.OPENAI_API_KEY) {
+    const hasApiKey = Boolean(process.env.AZURE_OPENAI_API_KEY || process.env.OPENAI_API_KEY);
+    if (!hasApiKey) {
       return NextResponse.json(analyzeFallback(text));
     }
 
     try {
       return NextResponse.json(await analyzeWithOpenAI(text));
     } catch (error) {
+      const provider = process.env.AZURE_OPENAI_ENDPOINT ? "Azure OpenAI" : "OpenAI";
+      console.error(`${provider} analysis failed:`, error instanceof Error ? error.message : "Unknown error");
       const fallback = analyzeFallback(text);
       return NextResponse.json({
         ...fallback,
-        notice: `LLM 분석에 실패해 데모 분석기로 전환했습니다. ${error instanceof Error ? error.message : "Unknown error"}`,
+        notice: `${provider} 분석에 실패해 데모 분석기로 전환했습니다. 환경변수, 모델 배포명, API 버전을 확인해 주세요.`,
       });
     }
   } catch {
