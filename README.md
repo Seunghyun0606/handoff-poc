@@ -12,7 +12,8 @@ AI가 인수자의 입장에서 인수인계 문서를 검토하고 누락 정�
 - 확인되지 않은 내용을 만들어내지 않는 개선 문서 생성
 - 샘플 문서 3종
 - API 키가 없을 때도 데모 가능한 로컬 fallback 분석기
-- `OPENAI_API_KEY` 설정 시 OpenAI Responses API Structured Outputs 사용
+- Native OpenAI Responses API와 Azure OpenAI Chat Completions 모두 지원
+- `AZURE_OPENAI_ENDPOINT`가 설정되면 Azure OpenAI를 자동 사용
 
 ## Quick start
 
@@ -24,7 +25,29 @@ npm run dev
 
 브라우저에서 `http://localhost:3000`을 엽니다.
 
-OpenAI 연동을 사용하려면 `.env.local`에 `OPENAI_API_KEY`를 설정합니다. 키가 없으면 샘플/데모용 deterministic 분석기가 자동으로 동작합니다.
+### Azure OpenAI
+
+사용 중인 Azure OpenAI 키를 `OPENAI_API_KEY`에 그대로 넣을 수 있습니다.
+
+```env
+OPENAI_API_KEY=atl-...
+OPENAI_MODEL=gpt-4.1
+AZURE_OPENAI_ENDPOINT=https://skax.ai-talentlab.com
+AZURE_OPENAI_API_VERSION=2024-12-01-preview
+```
+
+`AZURE_OPENAI_ENDPOINT`가 있으면 앱은 Azure OpenAI Chat Completions API를 사용하며 `api-key` 헤더로 인증합니다. `AZURE_OPENAI_API_KEY`를 별도로 설정한 경우에는 해당 값이 `OPENAI_API_KEY`보다 우선합니다.
+
+### Native OpenAI
+
+Azure endpoint를 설정하지 않으면 기존 OpenAI Responses API를 사용합니다.
+
+```env
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-5.4-mini
+```
+
+API 키가 없거나 LLM 호출이 실패하면 샘플/데모용 deterministic 분석기가 자동으로 동작합니다.
 
 ## Project docs
 
