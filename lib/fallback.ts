@@ -65,7 +65,7 @@ export function analyzeFallback(text: string): AnalysisResult {
       ? "기본 흐름은 이해할 수 있지만 권한·예외·장애·검증 같은 운영 정보 보완이 필요합니다."
       : "대부분의 핵심 정보가 포함되어 있으며 남은 확인 항목을 보완하면 독립 수행 가능성이 높습니다.";
 
-  return normalizeAnalysis({
+  const normalized = normalizeAnalysis({
     overall_score: 0,
     summary,
     categories,
@@ -75,4 +75,9 @@ export function analyzeFallback(text: string): AnalysisResult {
     source: "fallback",
     notice: "OPENAI_API_KEY가 없어 데모용 규칙 기반 분석기를 사용했습니다.",
   });
+
+  return {
+    ...normalized,
+    overall_score: Math.min(95, normalized.overall_score),
+  };
 }
