@@ -54,12 +54,16 @@ for (const sample of samples) {
     const scoreInRange = Number.isFinite(data.overall_score)
       && data.overall_score >= sample.expected[0]
       && data.overall_score <= sample.expected[1];
+    const questionCount = Array.isArray(data.questions) ? data.questions.length : -1;
+    const gapCount = Array.isArray(data.gaps) ? data.gaps.length : -1;
+    const questionsAligned = questionCount >= 0 && gapCount >= 0 && questionCount <= gapCount;
     const ok = response.ok
       && data.source === "azure-openai"
       && Array.isArray(data.categories)
       && data.categories.length === 12
       && !data.notice
-      && scoreInRange;
+      && scoreInRange
+      && questionsAligned;
 
     results.push({
       sample: sample.id,
@@ -68,8 +72,9 @@ for (const sample of samples) {
       score: data.overall_score,
       expected: `${sample.expected[0]}-${sample.expected[1]}`,
       categoryCount: Array.isArray(data.categories) ? data.categories.length : null,
-      questionCount: Array.isArray(data.questions) ? data.questions.length : null,
-      gapCount: Array.isArray(data.gaps) ? data.gaps.length : null,
+      questionCount,
+      gapCount,
+      questionsAligned,
       latencyMs: Date.now() - startedAt,
       ok,
     });
