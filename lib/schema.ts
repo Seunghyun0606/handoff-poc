@@ -56,9 +56,17 @@ export const ANALYSIS_JSON_SCHEMA = {
       },
     },
     questions: { type: "array", items: { type: "string" }, maxItems: 12 },
+  },
+  required: ["overall_score", "summary", "categories", "gaps", "questions"],
+} as const;
+
+export const IMPROVEMENT_JSON_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
     improved_document: { type: "string" },
   },
-  required: ["overall_score", "summary", "categories", "gaps", "questions", "improved_document"],
+  required: ["improved_document"],
 } as const;
 
 const WEIGHTS: Record<string, number> = {
