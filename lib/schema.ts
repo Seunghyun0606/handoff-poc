@@ -1,4 +1,4 @@
-import { CATEGORY_IDS, type AnalysisResult } from "./types";
+import { CATEGORY_IDS, type AnalysisResult, type CategoryStatus } from "./types";
 
 export const CATEGORY_DEFINITIONS = [
   { id: "purpose", name: "업무 목적" },
@@ -76,6 +76,12 @@ const WEIGHTS: Record<string, number> = {
   follow_up: 0.05,
 };
 
+const STATUS_SCORES: Record<CategoryStatus, number> = {
+  CLEAR: 100,
+  PARTIAL: 50,
+  MISSING: 0,
+};
+
 export function normalizeAnalysis(result: AnalysisResult): AnalysisResult {
   const byId = new Map(result.categories.map((item) => [item.id, item]));
   const categories = CATEGORY_DEFINITIONS.map((definition) => {
@@ -86,10 +92,14 @@ export function normalizeAnalysis(result: AnalysisResult): AnalysisResult {
     return {
       ...found,
       name: definition.name,
-      score: Math.max(0, Math.min(100, Math.round(found.score))),
+      score: STATUS_SCORES[found.status] ?? 0,
     };
   });
 
-  const overall = Math.round(categories.reduce((sum, item) => sum + item.score * (WEIGHTS[item.id] ?? 0), 0));
-  return { ...result, overall_score: overall, categories };
+  const statusById = new Map(categories.map((item) => [item.id, item.status]));
+  const gaps = result.gaps.filter((gap) => statusById.get(gap.category_id) !== "CLEAR");
+  const weightedScore = Math.round(categories.reduce((sum, item) => sum + item.score * (WEIGHTS[item.id] ?? 0), 0));
+  const overall = Math.min(95, weightedScore);
+
+  return { ...result, overall_score: overall, categories, gaps };
 }
