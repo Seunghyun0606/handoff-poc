@@ -1,0 +1,33 @@
+name: Synthetic Validation
+
+on:
+  push:
+    branches:
+      - validation/synthetic-contest
+    paths:
+      - 'validation/synthetic-corpus.json'
+      - 'scripts/synthetic-validation.mjs'
+      - '.github/workflows/synthetic-validation.yml'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run synthetic production validation
+        env:
+          HANDOFF_BASE_URL: https://handoff-poc.vercel.app
+        run: node scripts/synthetic-validation.mjs
+      - name: Print results
+        if: always()
+        run: cat validation/synthetic-results.json || true
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-validation-results
+          path: validation/synthetic-results.json
