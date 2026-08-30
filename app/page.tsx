@@ -42,32 +42,51 @@ function GapCard({ gap }: { gap: Gap }) {
 
 export default function Home() {
   const [text, setText] = useState("");
+  const [analyzedText, setAnalyzedText] = useState("");
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [improving, setImproving] = useState(false);
   const [error, setError] = useState("");
+  const [improveError, setImproveError] = useState("");
+  const [improvementNotice, setImprovementNotice] = useState("");
   const [tab, setTab] = useState<"gaps" | "questions" | "improved">("gaps");
   const requestInFlight = useRef(false);
+  const improveInFlight = useRef(false);
 
+  const busy = loading || improving;
   const clearCount = useMemo(() => result?.categories.filter((item) => item.status === "CLEAR").length ?? 0, [result]);
   const engine = result?.source ? sourceMeta[result.source] : null;
 
+  function invalidateResult(nextText: string) {
+    setText(nextText);
+    setResult(null);
+    setAnalyzedText("");
+    setImproveError("");
+    setImprovementNotice("");
+    setTab("gaps");
+  }
+
   async function analyze() {
-    if (requestInFlight.current || text.trim().length < 20) return;
+    if (requestInFlight.current || improveInFlight.current || text.trim().length < 20) return;
 
     requestInFlight.current = true;
     setError("");
+    setImproveError("");
+    setImprovementNotice("");
     setResult(null);
     setLoading(true);
 
+    const snapshot = text.trim();
     try {
       const response = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text: snapshot }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "분석에 실패했습니다.");
       setResult(data);
+      setAnalyzedText(snapshot);
       setTab("gaps");
       setTimeout(() => document.getElementById("result")?.scrollIntoView({ behavior: "smooth" }), 50);
     } catch (e) {
@@ -78,8 +97,44 @@ export default function Home() {
     }
   }
 
+  async function generateImprovedDocument() {
+    if (!result || !analyzedText || result.improved_document || improveInFlight.current || requestInFlight.current) return;
+
+    improveInFlight.current = true;
+    setImproving(true);
+    setImproveError("");
+    setImprovementNotice("");
+
+    try {
+      const response = await fetch("/api/improve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: analyzedText,
+          analysis: {
+            categories: result.categories,
+            gaps: result.gaps,
+            questions: result.questions,
+          },
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "개선 문서 생성에 실패했습니다.");
+      if (typeof data.improved_document !== "string" || !data.improved_document.trim()) {
+        throw new Error("개선 문서가 비어 있습니다.");
+      }
+      setResult((previous) => previous ? { ...previous, improved_document: data.improved_document } : previous);
+      if (typeof data.notice === "string") setImprovementNotice(data.notice);
+    } catch (e) {
+      setImproveError(e instanceof Error ? e.message : "개선 문서 생성에 실패했습니다.");
+    } finally {
+      improveInFlight.current = false;
+      setImproving(false);
+    }
+  }
+
   function onFile(event: ChangeEvent<HTMLInputElement>) {
-    if (requestInFlight.current) return;
+    if (requestInFlight.current || improveInFlight.current) return;
     const file = event.target.files?.[0];
     if (!file) return;
     if (!/\.(txt|md)$/i.test(file.name)) {
@@ -87,13 +142,23 @@ export default function Home() {
       return;
     }
     const reader = new FileReader();
-    reader.onload = () => setText(String(reader.result ?? ""));
+    reader.onload = () => invalidateResult(String(reader.result ?? ""));
     reader.readAsText(file);
   }
 
   async function copyResult() {
-    if (!result) return;
+    if (!result?.improved_document) return;
     await navigator.clipboard.writeText(result.improved_document);
+  }
+
+  function reset() {
+    setResult(null);
+    setText("");
+    setAnalyzedText("");
+    setImproveError("");
+    setImprovementNotice("");
+    setTab("gaps");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   return (
@@ -105,19 +170,19 @@ export default function Home() {
           <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-slate-600 md:text-lg">AI가 인수자의 입장에서 문서를 읽고, 작성자에게는 당연해서 빠뜨린 정보와 실제로 물어봐야 할 질문을 찾아드립니다.</p>
         </div>
 
-        <div aria-busy={loading} className="relative mx-auto mt-10 max-w-4xl overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/50 md:p-7">
+        <div aria-busy={busy} className="relative mx-auto mt-10 max-w-4xl overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/50 md:p-7">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <label htmlFor="handoff" className="font-bold text-slate-900">인수인계 문서</label>
-            <label className={`rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 ${loading ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-slate-50"}`}>
+            <label className={`rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 ${busy ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-slate-50"}`}>
               .txt / .md 업로드
-              <input disabled={loading} className="hidden" type="file" accept=".txt,.md,text/plain,text/markdown" onChange={onFile} />
+              <input disabled={busy} className="hidden" type="file" accept=".txt,.md,text/plain,text/markdown" onChange={onFile} />
             </label>
           </div>
           <textarea
             id="handoff"
             value={text}
-            disabled={loading}
-            onChange={(e) => setText(e.target.value)}
+            disabled={busy}
+            onChange={(e) => invalidateResult(e.target.value)}
             placeholder="인수인계 문서를 붙여넣어 주세요..."
             className="min-h-64 w-full resize-y rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-7 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-50 disabled:cursor-not-allowed disabled:opacity-60"
           />
@@ -125,8 +190,8 @@ export default function Home() {
             {SAMPLES.map((sample) => (
               <button
                 key={sample.id}
-                disabled={loading}
-                onClick={() => { setText(sample.text); setResult(null); }}
+                disabled={busy}
+                onClick={() => invalidateResult(sample.text)}
                 className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:border-indigo-300 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {sample.label} <span className="text-slate-400">({sample.expected})</span>
@@ -134,7 +199,7 @@ export default function Home() {
             ))}
           </div>
           {error && <p className="mt-3 rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
-          <button disabled={loading || text.trim().length < 20} onClick={analyze} className="mt-5 flex w-full items-center justify-center gap-3 rounded-2xl bg-slate-950 px-5 py-4 font-bold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40">
+          <button disabled={busy || text.trim().length < 20} onClick={analyze} className="mt-5 flex w-full items-center justify-center gap-3 rounded-2xl bg-slate-950 px-5 py-4 font-bold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40">
             {loading && <span aria-hidden="true" className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />}
             {loading ? "AI가 인수자의 입장에서 검토 중..." : "AI 분석하기"}
           </button>
@@ -191,9 +256,32 @@ export default function Home() {
 
               {tab === "gaps" && <div className="mt-5 grid gap-3 md:grid-cols-2">{result.gaps.length ? result.gaps.map((gap, index) => <GapCard key={`${gap.category_id}-${index}`} gap={gap} />) : <p className="text-sm text-slate-500">큰 누락이 발견되지 않았습니다. 실제 인수자 검토로 최종 확인하세요.</p>}</div>}
               {tab === "questions" && <ol className="mt-5 space-y-3">{result.questions.map((question, index) => <li key={`${question}-${index}`} className="flex gap-3 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-700"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-indigo-100 text-xs font-black text-indigo-700">{index + 1}</span><span>{question}</span></li>)}</ol>}
-              {tab === "improved" && <div className="mt-5"><div className="mb-3 flex justify-end"><button onClick={copyResult} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50">개선 문서 복사</button></div><pre className="whitespace-pre-wrap rounded-2xl bg-slate-950 p-5 font-sans text-sm leading-7 text-slate-100">{result.improved_document}</pre></div>}
+              {tab === "improved" && (
+                <div className="mt-5">
+                  {improvementNotice && <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">ℹ️ {improvementNotice}</div>}
+                  {improveError && <div className="mb-4 rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{improveError}</div>}
+                  {result.improved_document ? (
+                    <>
+                      <div className="mb-3 flex justify-end"><button onClick={copyResult} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50">개선 문서 복사</button></div>
+                      <pre className="whitespace-pre-wrap rounded-2xl bg-slate-950 p-5 font-sans text-sm leading-7 text-slate-100">{result.improved_document}</pre>
+                    </>
+                  ) : improving ? (
+                    <div role="status" aria-live="polite" className="rounded-2xl border border-indigo-100 bg-indigo-50/60 p-8 text-center">
+                      <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-indigo-100 border-t-indigo-600" aria-hidden="true" />
+                      <p className="mt-4 font-bold text-slate-900">개선 문서를 생성하고 있습니다</p>
+                      <p className="mt-2 text-sm text-slate-600">원문에 없는 사실은 만들지 않고 누락 정보는 placeholder로 남깁니다.</p>
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-8 text-center">
+                      <p className="font-bold text-slate-900">개선 문서는 필요할 때만 생성합니다</p>
+                      <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600">초기 분석 결과를 더 빨리 보여주기 위해 개선 문서 생성은 별도 AI 호출로 분리했습니다. 원문과 방금 확인한 Gap을 기준으로 안전하게 재구성합니다.</p>
+                      <button disabled={busy} onClick={generateImprovedDocument} className="mt-5 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40">개선 문서 생성</button>
+                    </div>
+                  )}
+                </div>
+              )}
 
-              <div className="mt-6 flex flex-wrap justify-end gap-2"><button onClick={() => { setResult(null); setText(""); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-600">다른 문서 분석</button></div>
+              <div className="mt-6 flex flex-wrap justify-end gap-2"><button disabled={busy} onClick={reset} className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-600 disabled:cursor-not-allowed disabled:opacity-40">다른 문서 분석</button></div>
             </div>
           </div>
         </section>
